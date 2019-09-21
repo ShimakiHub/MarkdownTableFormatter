@@ -66,10 +66,10 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="App.config" />
+    <None Include="demo1.md" />
+    <None Include="LICENSE" />
     <None Include="packages.config" />
-    <None Include="SampleMarkdown - Copy.md" />
-    <None Include="SampleMarkdown.md" />
-    <None Include="SampleMarkdown.md.bak" />
+    <None Include="Readme.md" />
   </ItemGroup>
   <ItemGroup>
     <BootstrapperPackage Include=".NETFramework,Version=v4.7.2">
