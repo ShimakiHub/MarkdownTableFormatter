@@ -16,8 +16,11 @@ namespace MarkdownTableFormatter
             [Option('b', "backup", Required = false, HelpText = "Backup file name.")]
             public string BackupFileName { get; set; }
 
-            [Option('p', "padding", Required = false, HelpText = "Apply the right padding for each item in the table.")]
+            [Option('p', "padding", Required = false, HelpText = "Apply the right padding for each column in the table.")]
             public bool EnablePadding { get; set; }
+
+            [Option('P', "padding1", Required = false, HelpText = "Apply the right padding for 1st column in the table.")]
+            public bool EnablePaddingForFirstColumn { get; set; }
         }
 
         static void Main(string[] args)
@@ -56,7 +59,7 @@ namespace MarkdownTableFormatter
                         string line = null;
                         var tableHeaders = new SortedList<int, string>();
                         var sortedTableItems = new SortedList<string, string>(StringComparer.InvariantCultureIgnoreCase);
-                        var maxItemLength = new SortedList<int, int>();
+                        var itemWidthMax = new SortedList<int, int>();
 
                         using (var reader = new StreamReader(options.BackupFileName))
                         using (var write = new StreamWriter(options.FileName, false, Encoding.UTF8))
@@ -85,11 +88,10 @@ namespace MarkdownTableFormatter
                                 // Format the body of the table.
                                 foreach (var tableItem in sortedTableItems)
                                 {
-                                    //var startIndex = unformattedLine.IndexOf('|');
-                                    var totalColumnCount = maxItemLength.Count - 2;
+                                    var totalColumnCount = itemWidthMax.Count - 2;
                                     var splittedLine = tableItem.Value.Split(new char[] { '|' });
 
-                                    for (int i = 0; i < maxItemLength.Count; i++)
+                                    for (int i = 0; i < itemWidthMax.Count; i++)
                                     {
                                         var item = splittedLine.Length > i ? splittedLine[i] : String.Empty;
                                         var trimedItem = item.Trim();
@@ -98,9 +100,13 @@ namespace MarkdownTableFormatter
                                             // Do not trim. Keep the original indent for the table.
                                             formattedTable += item;
                                         }
+                                        else if ((i == 1) && options.EnablePaddingForFirstColumn)
+                                        {
+                                            formattedTable += "| " + trimedItem.PadRight(itemWidthMax[i]) + " ";
+                                        }
                                         else if (i <= totalColumnCount)
                                         {
-                                            formattedTable += "| " + (options.EnablePadding ? trimedItem.PadRight(maxItemLength[i]) : trimedItem) + " ";
+                                            formattedTable += "| " + (options.EnablePadding ? trimedItem.PadRight(itemWidthMax[i]) : trimedItem) + " ";
                                         }
                                         else
                                         {
@@ -114,11 +120,7 @@ namespace MarkdownTableFormatter
 
                             // D. Find the first item and calculate the padding size of each item.
                             //
-                            // Input
-                            //   options.EnablePadding
-                            //
                             // Optput
-                            //   firstItem
                             //   maxItemLength
                             Func<int, (string firstItem, string line)> FindFirstItemAndCalculatePaddingSize = (tableIndentSize) =>
                             {
@@ -136,22 +138,22 @@ namespace MarkdownTableFormatter
                                 foreach (var item in line.Split(new char[] { '|' }))
                                 {
                                     var trimedItem = item.Trim();
-                                    if (maxItemLength.ContainsKey(index))
+                                    if (itemWidthMax.ContainsKey(index))
                                     {
                                         if (index != 0)
                                         {
-                                            maxItemLength[index] = Math.Max(maxItemLength[index], trimedItem.Length);
+                                            itemWidthMax[index] = Math.Max(itemWidthMax[index], trimedItem.Length);
                                         }
                                     }
                                     else
                                     {
                                         if (index != 0)
                                         {
-                                            maxItemLength.Add(index, trimedItem.Length);
+                                            itemWidthMax.Add(index, trimedItem.Length);
                                         }
                                         else
                                         {
-                                            maxItemLength.Add(0, tableIndentSize);
+                                            itemWidthMax.Add(0, tableIndentSize);
                                         }
                                     }
 
@@ -216,11 +218,11 @@ namespace MarkdownTableFormatter
                             // F. Adjust the parameters to format the table body.
                             Action<int> AdjustParametersForFormat = (columnCount) =>
                             {
-                                int missingColumnCount = columnCount + 2 - maxItemLength.Count;
+                                int missingColumnCount = columnCount + 2 - itemWidthMax.Count;
 
                                 for (int i = 0; i < missingColumnCount; i++)
                                 {
-                                    maxItemLength.Add(maxItemLength.Count, 0);
+                                    itemWidthMax.Add(itemWidthMax.Count, 0);
                                 }
                             };
 
@@ -246,7 +248,7 @@ namespace MarkdownTableFormatter
 
                                     // Reset variables.
                                     sortedTableItems.Clear();
-                                    maxItemLength.Clear();
+                                    itemWidthMax.Clear();
                                     while (!reader.EndOfStream)
                                     {
                                         // Read each line until table ends.
